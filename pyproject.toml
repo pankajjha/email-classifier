@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "email-fasttext-classifier"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "fasttext-wheel",
+  "numpy<2",
+  "python-dotenv",
+  "uvicorn[standard]",
+]
+
+[project.optional-dependencies]
+export = [
+  "google-api-python-client",
+  "google-auth-oauthlib",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

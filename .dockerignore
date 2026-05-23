@@ -1,0 +1,14 @@
+.env
+.tokens/
+credentials.json
+
+.git/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+data/
+models/*.bin
+models/metrics.json
+models/sample_classifier.bin

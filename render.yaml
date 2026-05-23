@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: email-classifier
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: MODEL_PATH
+        value: /app/models/email_classifier.ftz
+      - key: CLASSIFIER_API_KEY
+        generateValue: true

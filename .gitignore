@@ -1,0 +1,14 @@
+.env
+.tokens/
+credentials.json
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+data/raw/
+data/processed/
+models/*
+!models/
+!models/email_classifier.ftz
