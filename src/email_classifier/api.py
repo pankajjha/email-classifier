@@ -425,6 +425,12 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/ready")
+def ready() -> dict[str, str]:
+    load_model()
+    return {"status": "ready", "model": MODEL_PATH}
+
+
 @app.get("/", response_class=HTMLResponse)
 def test_page() -> str:
     return TEST_PAGE

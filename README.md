@@ -239,6 +239,31 @@ https://your-service.onrender.com/
 
 Use the generated `CLASSIFIER_API_KEY` from Render's environment variables in the page's API key field, or clear `CLASSIFIER_API_KEY` for public testing.
 
+Use `/ready` as the n8n preflight endpoint. It loads the model and returns only after the classifier is actually ready:
+
+```text
+https://your-service.onrender.com/ready
+```
+
+For the Gmail workflow, put this before the real `/classify` request:
+
+1. Gmail Trigger.
+2. HTTP Request: `GET /ready`, retry 10 times, wait 10 seconds between tries, timeout 120 seconds.
+3. Get Gmail Labels, with execute once enabled.
+4. Prepare Classifier Payload.
+5. HTTP Request: `POST /classify`, retry 5 times, wait 10 seconds between tries, timeout 120 seconds.
+6. Map Label ID.
+7. Add Predicted Gmail Label.
+
+This avoids sending real emails to the classifier while Render is still returning its "Application loading" HTML page.
+
+For extra reliability, create a separate n8n keep-alive workflow:
+
+1. Schedule Trigger every 10 minutes.
+2. HTTP Request: `GET /ready`, retry 3 times, timeout 60 seconds.
+
+The preflight step is still required because free hosting can sleep or restart despite keep-alives.
+
 ## Vercel Note
 
 Vercel can run FastAPI on Python Functions, but this project is a better fit for Render or a VPS because it uses a native FastText package and loads a model file. Use Vercel only if you are comfortable debugging Python serverless packaging and cold starts.
