@@ -2,7 +2,10 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    MODEL_PATH=/app/models/email_classifier.ftz
+    MODEL_PATH=/app/models/email_classifier.ftz \
+    SKLEARN_MODEL_PATH=/app/models/sklearn_classifier.joblib \
+    CLASSIFIER_BACKEND=sklearn \
+    CLASSIFIER_USE_RULES=false
 
 WORKDIR /app
 
@@ -13,6 +16,7 @@ RUN apt-get update \
 COPY pyproject.toml requirements.inference.txt ./
 COPY src ./src
 COPY models/email_classifier.ftz ./models/email_classifier.ftz
+COPY models/sklearn_classifier.joblib ./models/sklearn_classifier.joblib
 
 RUN pip install --no-cache-dir -r requirements.inference.txt
 

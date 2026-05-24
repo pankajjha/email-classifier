@@ -12,3 +12,5 @@ data/processed/
 models/*
 !models/
 !models/email_classifier.ftz
+!models/sklearn_classifier.joblib
+!models/sklearn_classifier_metrics.json

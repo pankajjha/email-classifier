@@ -1,10 +1,10 @@
 # Email Classifier Handover
 
-Last updated: 2026-05-23
+Last updated: 2026-05-24
 
 ## Current State
 
-This repo contains the FastAPI + FastText Gmail classifier service used by n8n.
+This repo contains the FastAPI Gmail classifier service used by n8n.
 
 Render service:
 
@@ -14,10 +14,10 @@ Render service:
 - Classifier endpoint: `POST /classify`
 - Latest pushed commit: `31cc205 Add classifier readiness endpoint`
 
-The `/ready` endpoint is live and returns after the model is loaded:
+The `/ready` endpoint returns after the configured model is loaded:
 
 ```json
-{"status":"ready","model":"/app/models/email_classifier.ftz"}
+{"status":"ready","backend":"sklearn","model":"/app/models/sklearn_classifier.joblib"}
 ```
 
 ## Offline Relabeling / Retraining Status
@@ -52,8 +52,22 @@ Work account progress:
 Notes:
 
 - Raw exports and generated training data live under ignored `data/raw/` and `data/processed/`; do not commit mailbox data.
-- Only `models/email_classifier.ftz` is intended as the deployable artifact.
+- `models/sklearn_classifier.joblib` is the current primary deployable artifact.
+- `models/email_classifier.ftz` remains a FastText fallback artifact.
 - `marketing` and `misc` remain underrepresented in validation, so do not overinterpret those per-label scores.
+
+Classifier backend update on 2026-05-24:
+
+- Added `CLASSIFIER_BACKEND=fasttext|sklearn|semantic`.
+- Render is configured for `CLASSIFIER_BACKEND=sklearn` and `CLASSIFIER_USE_RULES=false`.
+- The deployable sklearn model is `models/sklearn_classifier.joblib`.
+- It uses word/character TF-IDF plus Logistic Regression with the newest 300 body characters included.
+- Validation accuracy: `0.8902305159165752`.
+- Important validation recalls:
+  - `action_needed`: `0.7970297029702971`
+  - `urgent`: `0.7692307692307693`
+  - `follow_up`: `0.375`
+- A sentence-transformer semantic candidate was tested but not promoted because it underperformed (`0.7376509330406147` with 1200 body chars, `0.7903402854006586` with headers/snippet only).
 
 ## Important Security Note
 

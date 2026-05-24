@@ -1,6 +1,6 @@
-# Email FastText Classifier
+# Email Classifier
 
-Small local pipeline for training a label classifier from Gmail messages that are already labelled by Dimension or Gmail.
+Small local pipeline for training a label classifier from Gmail messages that are already labelled by Dimension, Gmail, manual review, or the one-time OpenAI bootstrap flow.
 
 Target labels:
 
@@ -19,10 +19,12 @@ Target labels:
 ## Architecture
 
 1. Export already-labelled historical Gmail messages from both accounts.
-2. Convert exported JSONL into FastText supervised training files.
-3. Train a small FastText model locally.
-4. Deploy only the tiny `/classify` API and `models/email_classifier.bin` on the VPS.
+2. Convert exported JSONL into local training data.
+3. Train a small local classifier.
+4. Deploy only the `/classify` API and compact model artifact on Render or a VPS.
 5. n8n sends new unlabelled email fields to `/classify`, then applies the returned label in Gmail.
+
+The current Render backend is `sklearn`: word/character TF-IDF features plus Logistic Regression. FastText remains available as a fallback backend, and the sentence-transformer semantic backend is available for experiments but is not the default because it underperformed on the current validation set.
 
 ## Setup
 
@@ -161,7 +163,7 @@ python -m email_classifier.review_ui \
   --port 8088
 ```
 
-Expand representative labels back to every exported email, then prepare and train FastText from the expanded reviewed data:
+Expand representative labels back to every exported email, then train the lightweight sklearn classifier:
 
 ```bash
 python -m email_classifier.expand_group_labels \
@@ -170,6 +172,18 @@ python -m email_classifier.expand_group_labels \
   --labeled-representatives data/raw/work_representatives_reviewed.jsonl \
   --output data/raw/work_reviewed.jsonl
 ```
+
+```bash
+python -m email_classifier.train_sklearn \
+  data/raw/work_reviewed.jsonl \
+  --model-output models/sklearn_classifier.joblib \
+  --metrics-output models/sklearn_classifier_metrics.json \
+  --body-chars 300
+```
+
+The deployable sklearn model is around 5 MB. The current work-account candidate measured `0.8902305159165752` validation accuracy, with `action_needed` recall around `0.797` and `urgent` recall around `0.769`.
+
+FastText can still be trained as a fallback:
 
 ```bash
 python -m email_classifier.prepare_fasttext \
@@ -217,7 +231,7 @@ The project pins `numpy<2` because the current FastText Python wrapper can fail 
 
 Training uses headers and Gmail snippets by default because full Gmail bodies often contain quoted threads, signatures, and footer text. Add `--include-body` only if validation improves with full body text.
 
-The API also applies a small keyword guard before FastText for obvious labels such as `payment`, `meeting`, `newsletter`, `urgent`, and `follow_up`. This is intentional because the current exported dataset has no examples for `follow_up`/`misc` and very few examples for some other labels.
+The API can apply a small keyword guard before model prediction when `CLASSIFIER_USE_RULES=true`. The Render sklearn deployment sets `CLASSIFIER_USE_RULES=false` so classification is driven by the trained model instead of case-by-case phrase overrides.
 
 ## Smoke Test
 
@@ -240,7 +254,8 @@ python -m email_classifier.train \
 ## Run API
 
 ```bash
-export MODEL_PATH=models/email_classifier.ftz
+export CLASSIFIER_BACKEND=sklearn
+export SKLEARN_MODEL_PATH=models/sklearn_classifier.joblib
 export CLASSIFIER_API_KEY=change-me
 uvicorn email_classifier.api:app --host 0.0.0.0 --port 8000
 ```
@@ -280,9 +295,9 @@ Example response:
 Train locally, then deploy only:
 
 - `src/email_classifier`
-- `requirements.txt`
 - `requirements.inference.txt`
 - `.env`
+- `models/sklearn_classifier.joblib`
 - `models/email_classifier.ftz`
 
 For a tiny VPS, run with one worker:
@@ -307,7 +322,7 @@ Push the repo to GitHub, then create a Render Blueprint from the repo. Render wi
 uvicorn email_classifier.api:app --host 0.0.0.0 --port $PORT --workers 1
 ```
 
-The deploy uses `models/email_classifier.ftz`, not the large `.bin` model. Raw email exports and training files are ignored.
+The deploy uses `models/sklearn_classifier.joblib` by default. `models/email_classifier.ftz` is still copied as a fallback model. Raw email exports and training files are ignored.
 
 After deploy, open:
 

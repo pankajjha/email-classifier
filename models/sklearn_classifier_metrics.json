@@ -1,0 +1,103 @@
+{
+  "accuracy": 0.8902305159165752,
+  "body_chars": 300,
+  "c": 4.0,
+  "class_weight": "none",
+  "classification_report": {
+    "accuracy": 0.8902305159165752,
+    "action_needed": {
+      "f1-score": 0.8009950248756219,
+      "precision": 0.805,
+      "recall": 0.7970297029702971,
+      "support": 202.0
+    },
+    "awaiting_reply": {
+      "f1-score": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "support": 9.0
+    },
+    "done": {
+      "f1-score": 0.7391304347826086,
+      "precision": 0.7727272727272727,
+      "recall": 0.7083333333333334,
+      "support": 24.0
+    },
+    "follow_up": {
+      "f1-score": 0.5,
+      "precision": 0.75,
+      "recall": 0.375,
+      "support": 8.0
+    },
+    "fyi": {
+      "f1-score": 0.9443757725587144,
+      "precision": 0.9478908188585607,
+      "recall": 0.9408866995073891,
+      "support": 406.0
+    },
+    "macro avg": {
+      "f1-score": 0.5795792474482409,
+      "precision": 0.6452652493776162,
+      "recall": 0.544158775394552,
+      "support": 911.0
+    },
+    "marketing": {
+      "f1-score": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "support": 1.0
+    },
+    "meeting": {
+      "f1-score": 0.9302325581395349,
+      "precision": 0.9523809523809523,
+      "recall": 0.9090909090909091,
+      "support": 22.0
+    },
+    "misc": {
+      "f1-score": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "support": 1.0
+    },
+    "newsletter": {
+      "f1-score": 0.6666666666666666,
+      "precision": 1.0,
+      "recall": 0.5,
+      "support": 8.0
+    },
+    "payment": {
+      "f1-score": 0.9244060475161987,
+      "precision": 0.8699186991869918,
+      "recall": 0.9861751152073732,
+      "support": 217.0
+    },
+    "urgent": {
+      "f1-score": 0.8695652173913043,
+      "precision": 1.0,
+      "recall": 0.7692307692307693,
+      "support": 13.0
+    },
+    "weighted avg": {
+      "f1-score": 0.8832662995257974,
+      "precision": 0.8811458459692518,
+      "recall": 0.8902305159165752,
+      "support": 911.0
+    }
+  },
+  "examples": 6070,
+  "label_counts": {
+    "action_needed": 1347,
+    "awaiting_reply": 59,
+    "done": 161,
+    "follow_up": 52,
+    "fyi": 2706,
+    "marketing": 5,
+    "meeting": 146,
+    "misc": 9,
+    "newsletter": 53,
+    "payment": 1446,
+    "urgent": 86
+  },
+  "train_examples": 5159,
+  "valid_examples": 911
+}

@@ -19,6 +19,15 @@ export = [
   "google-api-python-client",
   "google-auth-oauthlib",
 ]
+sklearn = [
+  "joblib",
+  "scikit-learn",
+]
+semantic = [
+  "joblib",
+  "scikit-learn",
+  "sentence-transformers",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

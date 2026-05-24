@@ -7,5 +7,11 @@ services:
     envVars:
       - key: MODEL_PATH
         value: /app/models/email_classifier.ftz
+      - key: SKLEARN_MODEL_PATH
+        value: /app/models/sklearn_classifier.joblib
+      - key: CLASSIFIER_BACKEND
+        value: sklearn
+      - key: CLASSIFIER_USE_RULES
+        value: "false"
       - key: CLASSIFIER_API_KEY
         generateValue: true

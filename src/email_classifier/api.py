@@ -17,9 +17,19 @@ from .text import clean_text
 load_dotenv()
 
 MODEL_PATH = os.getenv("MODEL_PATH", "models/email_classifier.bin")
+SEMANTIC_MODEL_PATH = os.getenv("SEMANTIC_MODEL_PATH", "models/semantic_classifier.joblib")
+SKLEARN_MODEL_PATH = os.getenv("SKLEARN_MODEL_PATH", "models/sklearn_classifier.joblib")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "")
+CLASSIFIER_BACKEND = os.getenv("CLASSIFIER_BACKEND", "fasttext").strip().lower()
 API_KEY = os.getenv("CLASSIFIER_API_KEY", "")
+USE_RULES = os.getenv("CLASSIFIER_USE_RULES", "1" if CLASSIFIER_BACKEND == "fasttext" else "0").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
-app = FastAPI(title="Email FastText Classifier", version="0.1.0")
+app = FastAPI(title="Email Classifier", version="0.1.0")
 
 
 TEST_PAGE = """
@@ -400,13 +410,54 @@ def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
 
 
 @lru_cache(maxsize=1)
-def load_model():
+def load_fasttext_model():
     if not os.path.exists(MODEL_PATH):
         raise RuntimeError(f"Model not found: {MODEL_PATH}")
     return fasttext.load_model(MODEL_PATH)
 
 
-def email_to_text(payload: EmailInput) -> str:
+@lru_cache(maxsize=1)
+def load_semantic_model():
+    if not os.path.exists(SEMANTIC_MODEL_PATH):
+        raise RuntimeError(f"Semantic model not found: {SEMANTIC_MODEL_PATH}")
+    from .semantic import SemanticEmailClassifier
+
+    return SemanticEmailClassifier(
+        classifier_path=SEMANTIC_MODEL_PATH,
+        embedding_model=EMBEDDING_MODEL or None,
+        top_k=3,
+    )
+
+
+@lru_cache(maxsize=1)
+def load_sklearn_model():
+    if not os.path.exists(SKLEARN_MODEL_PATH):
+        raise RuntimeError(f"Sklearn model not found: {SKLEARN_MODEL_PATH}")
+    from .sklearn_classifier import SklearnEmailClassifier
+
+    return SklearnEmailClassifier(classifier_path=SKLEARN_MODEL_PATH, top_k=3)
+
+
+def load_model():
+    if CLASSIFIER_BACKEND == "fasttext":
+        return load_fasttext_model()
+    if CLASSIFIER_BACKEND == "sklearn":
+        return load_sklearn_model()
+    if CLASSIFIER_BACKEND == "semantic":
+        return load_semantic_model()
+    raise RuntimeError(f"Unsupported classifier backend: {CLASSIFIER_BACKEND}")
+
+
+def email_to_text(payload: EmailInput, body_chars: int | None = None) -> str:
+    body = payload.body
+    if body_chars is not None:
+        if body_chars > 0:
+            from .text import strip_reply_noise
+
+            body = strip_reply_noise(body, max_chars=body_chars)
+        else:
+            body = ""
+
     return clean_text(
         " ".join(
             [
@@ -414,7 +465,7 @@ def email_to_text(payload: EmailInput) -> str:
                 f"from: {payload.sender}",
                 f"to: {payload.to}",
                 f"snippet: {payload.snippet}",
-                payload.body,
+                f"body: {body}" if body else "",
             ]
         )
     )
@@ -428,7 +479,13 @@ def health() -> dict[str, str]:
 @app.get("/ready")
 def ready() -> dict[str, str]:
     load_model()
-    return {"status": "ready", "model": MODEL_PATH}
+    model_path_by_backend = {
+        "fasttext": MODEL_PATH,
+        "sklearn": SKLEARN_MODEL_PATH,
+        "semantic": SEMANTIC_MODEL_PATH,
+    }
+    model_path = model_path_by_backend.get(CLASSIFIER_BACKEND, MODEL_PATH)
+    return {"status": "ready", "backend": CLASSIFIER_BACKEND, "model": model_path}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -438,22 +495,33 @@ def test_page() -> str:
 
 @app.post("/classify", response_model=Classification, dependencies=[Depends(require_api_key)])
 def classify(payload: EmailInput) -> Classification:
-    text = email_to_text(payload)
+    model = load_model()
+    body_chars = getattr(model, "body_chars", None) if CLASSIFIER_BACKEND in {"semantic", "sklearn"} else None
+    text = email_to_text(payload, body_chars=body_chars)
     if not text:
         raise HTTPException(status_code=400, detail="Empty email text")
 
-    rule_label = classify_by_rules(text)
-    if rule_label:
+    if USE_RULES:
+        rule_label = classify_by_rules(text)
+        if rule_label:
+            return Classification(
+                label=rule_label,
+                confidence=0.99,
+                candidates=[Candidate(label=rule_label, confidence=0.99)],
+            )
+
+    if CLASSIFIER_BACKEND in {"semantic", "sklearn"}:
+        prediction = model.predict(text)
         return Classification(
-            label=rule_label,
-            confidence=0.99,
-            candidates=[Candidate(label=rule_label, confidence=0.99)],
+            label=prediction.label,
+            confidence=prediction.confidence,
+            candidates=[Candidate(**candidate) for candidate in prediction.candidates],
         )
 
-    labels, scores = load_model().predict(text, k=3)
+    labels, scores = model.predict(text, k=3)
     candidates = [
-        {"label": strip_fasttext_prefix(label), "confidence": float(score)}
+        Candidate(label=strip_fasttext_prefix(label), confidence=float(score))
         for label, score in zip(labels, scores)
     ]
     top = candidates[0]
-    return Classification(label=top["label"], confidence=top["confidence"], candidates=candidates)
+    return Classification(label=top.label, confidence=top.confidence, candidates=candidates)
