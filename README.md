@@ -133,6 +133,15 @@ python -m email_classifier.cluster_similar \
   --assignments-output data/processed/work_group_assignments.jsonl
 ```
 
+Extract high-volume automated sender candidates from the local mailbox export. The output can be reviewed and copied into the private n8n workflow draft gate; keep the generated file ignored because it can contain private sender addresses:
+
+```bash
+python -m email_classifier.extract_sender_blacklist \
+  data/raw/work_all.jsonl \
+  --output data/processed/work_sender_blacklist_candidates.json \
+  --min-count 3
+```
+
 Optional but recommended: manually label the largest representative groups first. The UI shows how many emails each representative covers:
 
 ```bash

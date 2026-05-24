@@ -92,7 +92,7 @@ Work workflow:
 - ID: `4dA4s3KTBnLCpFEy`
 - Name: `Work Gmail Classifier`
 - Status after update: active
-- Latest workflow version after draft gating update: `c6d5d65f-22aa-49fb-8867-ff8a561083a1`
+- Latest workflow version after draft gating update: `14f83aa5-79da-40d9-a6fc-fbb3ee8b8123`
 
 Personal workflow still has this shape:
 
@@ -224,6 +224,15 @@ Draft gating update on 2026-05-24:
 - Automated-mailbox checks block local parts and markers such as `no-reply`, `noreply`, `notification`, `mailer`, `bot`, `alerts`, `digest`, `newsletter`, plus domains/markers for GitHub, tl;dv/tldv, Slack, Jira/Atlassian, Linear, Notion, Calendly, Google notifications, SendGrid, Mailgun, Amazon SES, and Mailchimp.
 - `Prepare Draft Reply Payload` rechecks `shouldAutoDraft` and throws before OpenAI if a future connection mistake routes a blocked item into the draft branch.
 - Skipped reasons are visible in execution data as `draftBlockReason`, for example `not_directly_to_owned_mailbox:pankaj.jha@ambak.com` or `automated_sender_domain:github.com`.
+
+Sender blacklist mining update on 2026-05-24:
+
+- Added `email_classifier.extract_sender_blacklist` to mine likely automated senders from ignored local Gmail exports.
+- Work mailbox mining found `6,070` records, `214` unique senders, and `65` exact automated/mailbox sender candidates.
+- Generated blacklist candidate file: `data/processed/work_sender_blacklist_candidates.json` (ignored; do not commit because it contains private sender addresses).
+- Work n8n workflow now includes an exact automated-sender blacklist copied from that candidate file.
+- Domain checks were narrowed to machine-style domains from the export, and broad root domain blocking was avoided where a domain can plausibly send human email.
+- App markers such as GitHub are checked against sender/header metadata, not email subject text, so a human email about GitHub is less likely to be blocked.
 
 Recommended v1 design:
 
