@@ -12,7 +12,7 @@ Render service:
 - Health endpoint: `GET /health`
 - Readiness endpoint: `GET /ready`
 - Classifier endpoint: `POST /classify`
-- Latest pushed commit: `31cc205 Add classifier readiness endpoint`
+- Latest pushed commit: `421928c Add sklearn email classifier backend`
 
 The `/ready` endpoint returns after the configured model is loaded:
 
@@ -92,6 +92,7 @@ Work workflow:
 - ID: `4dA4s3KTBnLCpFEy`
 - Name: `Work Gmail Classifier`
 - Status after update: active
+- Latest workflow version after draft gating update: `c6d5d65f-22aa-49fb-8867-ff8a561083a1`
 
 Personal workflow still has this shape:
 
@@ -116,7 +117,7 @@ Gmail Trigger
 -> Classify Email
 -> Map Label ID
    -> Add Predicted Gmail Label
-   -> IF classifierLabel is urgent, action_needed, or follow_up
+   -> IF shouldAutoDraft is true
       -> Prepare Draft Reply Payload
       -> Generate Draft Reply
       -> Parse Draft Reply
@@ -209,6 +210,20 @@ Status on 2026-05-23:
 - After a draft is created, it labels the Gmail thread with `AI/draft ready`.
 - Dedupe is in `Prepare Classifier Payload`: it skips messages/threads already carrying `AI/draft ready`, already classified messages, and Gmail system messages labelled `DRAFT`, `SENT`, `TRASH`, or `SPAM`.
 - OpenAI structured-output smoke test returned HTTP 200 and valid JSON in `output[].content[].text`.
+
+Draft gating update on 2026-05-24:
+
+- Work workflow drafts only when `shouldAutoDraft` is true.
+- `shouldAutoDraft` is computed in `Map Label ID`.
+- Required draft conditions:
+  - classifier label is `urgent`, `action_needed`, or `follow_up`
+  - original `To` header directly contains `pankaj.jha@ambak.com`
+  - sender email can be extracted
+  - sender is not `pankaj.jha@ambak.com`
+  - sender does not match deterministic automated-mailbox checks
+- Automated-mailbox checks block local parts and markers such as `no-reply`, `noreply`, `notification`, `mailer`, `bot`, `alerts`, `digest`, `newsletter`, plus domains/markers for GitHub, tl;dv/tldv, Slack, Jira/Atlassian, Linear, Notion, Calendly, Google notifications, SendGrid, Mailgun, Amazon SES, and Mailchimp.
+- `Prepare Draft Reply Payload` rechecks `shouldAutoDraft` and throws before OpenAI if a future connection mistake routes a blocked item into the draft branch.
+- Skipped reasons are visible in execution data as `draftBlockReason`, for example `not_directly_to_owned_mailbox:pankaj.jha@ambak.com` or `automated_sender_domain:github.com`.
 
 Recommended v1 design:
 
