@@ -151,6 +151,7 @@ def get_message_record(service, message_id: str, account: str, label: str) -> di
         "label": normalize_label(label),
         "message_id": message.get("id"),
         "thread_id": message.get("threadId"),
+        "label_ids": message.get("labelIds", []),
         "internal_date": message.get("internalDate"),
         "subject": header_value(payload, "Subject"),
         "from": header_value(payload, "From"),

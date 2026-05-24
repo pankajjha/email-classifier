@@ -107,6 +107,84 @@ For a very short one-shot export, only `GOOGLE_ACCESS_TOKEN` is required. If it 
 
 If your Gmail labels are nested or named differently, edit `config/labels.json`. Each canonical label can have multiple aliases.
 
+## Bootstrap Labels With OpenAI
+
+For a one-time quality pass, export all work-account emails, ask OpenAI to assign one canonical label, review uncertain labels locally, then train FastText from the reviewed JSONL.
+
+Export all Gmail messages. The exporter appends to the output file and skips existing message IDs, so reruns are safe if an OAuth Playground token expires:
+
+```bash
+export GOOGLE_ACCESS_TOKEN='short-lived-token'
+
+python -m email_classifier.gmail_export_all \
+  --account work \
+  --output data/raw/work_all.jsonl \
+  --query=-in:chats
+```
+
+Group similar messages before sending anything to OpenAI. This avoids paying to label repeated templates such as invoices, Jira, GitHub, reports, and alert emails:
+
+```bash
+python -m email_classifier.cluster_similar \
+  --input data/raw/work_all.jsonl \
+  --representatives-output data/processed/work_representatives.jsonl \
+  --assignments-output data/processed/work_group_assignments.jsonl
+```
+
+Optional but recommended: manually label the largest representative groups first. The UI shows how many emails each representative covers:
+
+```bash
+python -m email_classifier.review_ui \
+  --input data/processed/work_representatives.jsonl \
+  --output data/raw/work_representatives_reviewed.jsonl \
+  --port 8088
+```
+
+Label the remaining representative emails offline with OpenAI. This writes `label` only when model confidence is at or above the threshold; lower-confidence records are marked `needs_review`:
+
+```bash
+export OPENAI_API_KEY='openai-api-key'
+
+python -m email_classifier.openai_label \
+  --input data/processed/work_representatives.jsonl \
+  --output data/raw/work_representatives_openai_labeled.jsonl \
+  --min-confidence 0.85 \
+  --workers 8
+```
+
+Run the local review UI to correct OpenAI labels and write reviewed representative records:
+
+```bash
+python -m email_classifier.review_ui \
+  --input data/raw/work_representatives_openai_labeled.jsonl \
+  --output data/raw/work_representatives_reviewed.jsonl \
+  --port 8088
+```
+
+Expand representative labels back to every exported email, then prepare and train FastText from the expanded reviewed data:
+
+```bash
+python -m email_classifier.expand_group_labels \
+  --raw data/raw/work_all.jsonl \
+  --assignments data/processed/work_group_assignments.jsonl \
+  --labeled-representatives data/raw/work_representatives_reviewed.jsonl \
+  --output data/raw/work_reviewed.jsonl
+```
+
+```bash
+python -m email_classifier.prepare_fasttext \
+  data/raw/work_reviewed.jsonl \
+  --train-output data/processed/work_train.txt \
+  --valid-output data/processed/work_valid.txt \
+  --min-train-per-label 50
+
+python -m email_classifier.train \
+  --train data/processed/work_train.txt \
+  --valid data/processed/work_valid.txt \
+  --model-output models/email_classifier.bin \
+  --quantized-output models/email_classifier.ftz
+```
+
 ## Prepare FastText Files
 
 ```bash
